@@ -25,7 +25,9 @@ class maze:
         self.clear_screen()
         print("\n\n\n")
         for row in self.maze:
-            print(" ".join(row))  # ปรับโค้ดให้สั้นลง
+            for col in row:
+                print(col," ", end="")
+            print("")
         print("\n\n\n")
 
     def printEND(self):
@@ -71,12 +73,12 @@ class maze:
         return None  # หากไม่พบเส้นทาง
 
     def auto_move(self):
-        path = self.find_path()  # เรียกหาทางจาก DFS
+        path = self.find_path()  # เรียกทางจาก DFS
         if path:
             for y, x in path:
-                self.maze[self.ply.y][self.ply.x] = " "  # ลบผู้เล่นจากตำแหน่งเดิม
+                self.maze[self.ply.y][self.ply.x] = " "  # ลบตำแหน่งเดิม
                 self.ply = pos(y, x)
-                self.maze[self.ply.y][self.ply.x] = "P"  # วางผู้เล่นในตำแหน่งใหม่
+                self.maze[self.ply.y][self.ply.x] = "P"  # วางตำแหน่งใหม่
                 self.print()
                 time.sleep(0.5)  # พักเพื่อให้เห็นการเคลื่อนที่
 
