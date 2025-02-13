@@ -1,13 +1,12 @@
-from collections import deque
 import turtle
+from collections import deque
 
-# กำหนดค่าคงที่
+# กำหนดค่าคงที่สำหรับเขาวงกต
 OBSTACLE = 'O'
 PART_OF_PATH = 'P'
 TRIED = 'T'
 DEAD_END = 'D'
 EXIT = 'E'
-START = 'S'
 
 class Maze:
     def __init__(self, maze_file_name):
@@ -38,7 +37,7 @@ class Maze:
                                    (self.rows_in_maze - 1) / 2 + 0.5)
 
     def draw_maze(self):
-        """ วาดเขาวงกต """
+        """ วาดเขาวงกตโดยใช้ turtle """
         for y in range(self.rows_in_maze):
             for x in range(self.columns_in_maze):
                 if self.maze_list[y][x] == OBSTACLE:
@@ -48,7 +47,7 @@ class Maze:
         self.t.color('black', 'blue')
 
     def draw_centered_box(self, x, y, color):
-        """ วาดกล่องที่ตำแหน่ง x, y """
+        """ วาดกล่องสี่เหลี่ยมที่ตำแหน่ง x, y """
         turtle.tracer(0)
         self.t.up()
         self.t.goto(x - 0.5, y - 0.5)
@@ -70,7 +69,7 @@ class Maze:
         self.t.goto(x + self.x_translate, -y + self.y_translate)
 
     def drop_bread_crumb(self, color):
-        """ วางร่องรอย """
+        """ วางร่องรอยที่ตำแหน่งปัจจุบัน """
         self.t.dot(color)
 
     def update_position(self, row, col, val=None):
@@ -90,36 +89,31 @@ class Maze:
             self.drop_bread_crumb(color)
 
     def is_exit(self, row, col):
-        """ ตรวจสอบว่าตำแหน่งนี้คือทางออกหรือไม่ """
+        """ เช็คว่าตำแหน่งปัจจุบันเป็นทางออกหรือไม่ """
         return self.maze_list[row][col] == EXIT
 
     def __getitem__(self, idx):
         return self.maze_list[idx]
 
-
-# -------------------------------------------------
-# BFS หาเส้นทางที่สั้นที่สุด + ทิ้งร่องรอย
-# -------------------------------------------------
 def bfs_find_path(maze, start_row, start_col):
     """ ใช้ BFS หาเส้นทางไปยังทางออก พร้อมทิ้งร่องรอยการสำรวจ """
     queue = deque()
-    queue.append((start_row, start_col))
-    
-    came_from = {}  # เก็บเส้นทางย้อนกลับ
+    queue.append((start_row-1, start_col))
+
+    came_from = {}
     came_from[(start_row, start_col)] = None
 
     directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # ขึ้น ลง ซ้าย ขวา
 
+    # วางร่องรอยจุดเริ่มต้น
+    maze.update_position(start_row, start_col, TRIED)
+
     while queue:
         row, col = queue.popleft()
 
-        #เจอทางออกแล้ว หยุดการค้นหา
+        # เจอทางออกแล้ว หยุดการค้นหา
         if maze.is_exit(row, col):
             return reconstruct_path(came_from, (start_row, start_col), (row, col))
-
-        #วางร่องรอยว่าได้สำรวจจุดนี้แล้ว
-        if (row, col) != (start_row-1, start_col):
-            maze.update_position(row, col, TRIED)
 
         for dr, dc in directions:
             new_row, new_col = row + dr, col + dc
@@ -131,48 +125,44 @@ def bfs_find_path(maze, start_row, start_col):
                 queue.append((new_row, new_col))
                 came_from[(new_row, new_col)] = (row, col)
 
+                # วางร่องรอยว่าได้สำรวจจุดนี้แล้ว
+                maze.update_position(new_row, new_col, TRIED)
+
     return None  # ถ้าไม่มีเส้นทาง
 
-
 def reconstruct_path(came_from, start, end):
-    """ สร้างเส้นทางย้อนกลับจากจุดสิ้นสุดไปจุดเริ่มต้น """
+    """ สร้างเส้นทางจากจุดเริ่มต้นไปยังทางออก """
     path = []
     current = end
-    while current is not None:
+    while current:
         path.append(current)
         current = came_from[current]
-    path.reverse()  # กลับลำดับเส้นทาง
+
+    path.reverse()  # ทำให้เส้นทางเรียงจากต้นทางไปปลายทาง
     return path
 
-
-# -------------------------------------------------
-# ควบคุมการเดินของเต่า
-# -------------------------------------------------
-def move_turtle_along_path(maze, path):
-    """ ให้เต่าเดินตามเส้นทางที่หาไว้ """
+def follow_path(maze, path):
+    """ ให้เต่าเดินตามเส้นทางที่หาได้ """
     for row, col in path:
         maze.update_position(row, col, PART_OF_PATH)
 
-
-# -------------------------------------------------
+# ------------------------------------------------
 # เรียกใช้งาน Maze และ ค้นหาเส้นทาง
-# -------------------------------------------------
+# ------------------------------------------------
 my_maze = Maze('Map1.txt')
 my_maze.draw_maze()
 
-#หาเส้นทางที่สั้นที่สุดไปยังทางออก พร้อมทิ้งร่องรอย
-path_to_exit = bfs_find_path(my_maze, my_maze.start_row, my_maze.start_col)
+#สแกนแผนที่เพื่อหาเส้นทางออก
+path = bfs_find_path(my_maze, my_maze.start_row, my_maze.start_col)
 
-if path_to_exit:
-    print("พบเส้นทางไปทางออก!")
-
-    #กลับไปจุดเริ่มต้น
+if path:
+    # กลับไปที่จุดเริ่มต้น
     my_maze.update_position(my_maze.start_row, my_maze.start_col)
 
-    #เดินไปยังทางออกตามเส้นทางที่หาไว้
-    move_turtle_along_path(my_maze, path_to_exit)
-
+    # เดินไปหาทางออกผ่านเส้นทางที่ดีที่สุด
+    follow_path(my_maze, path)
+    print("เดินออกสำเร็จ!")
 else:
-    print("ไม่พบเส้นทางไปทางออก")
+    print("ไม่พบเส้นทางออก")
 
 turtle.done()
